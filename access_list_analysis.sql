@@ -71,7 +71,7 @@ order by sc.sysem_fob_id asc;
 
 
 --- Associate the list of Fobs on a single controller with the controller they are present on
-create view v_error_detail_fobid_single_controller_with_present_controller_ip as
+create view v_error_detail_fobid_single_controller_to_remove as
 select vedfsc.* from 
 v_error_detail_fobid_single_controller vedfsc 
 full outer join v_fob_ids_to_remove vfitr
