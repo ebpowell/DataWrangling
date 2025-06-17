@@ -11,35 +11,35 @@ create view v_fobcount_comparison as
 with fob_List as
 (
 	select distinct fob_id, controller 
-	from access_control
+	from door_controller.fobs
 	order by fob_id
 )
 select count(fob_id), controller
 from fob_list
 group by controller;
 
--- Which of the fobs are in the official list compared to what is on the controllers
+-- Support view:Which of the fobs are in the official list compared to what is on the controllers
 create view v_system_assigned_fob_compare as
 with system_fob_List as
 (
-	select distinct fob_id, controller 
-	from access_control
+	select distinct fob_id, controller, record_date 
+	from door_controller.fobs 
 	order by fob_id
 )
-select k.fob_id as assigned_fob_id, fsl.fob_id as sysem_fob_id, controller from 
+select k.fob_id as assigned_fob_id, fsl.fob_id as sysem_fob_id, controller, record_date from 
 keyfobs k 
 full outer join system_fob_list fsl
 on k.fob_id = fsl.fob_id
 order by k.fob_id;
 
---Find the fobs missing from both controllers
-create view v_system_missing_fobs as
+--Find the assigned fobs missing from both controllers
+create view v_system_missing_assigned_fobs as
 select * from v_system_assigned_fob_compare 
 where sysem_fob_id is null
 and assigned_fob_id > 0;
 
---FOb_ids needing removal
-create view v_fob_ids_to_remove as 
+--Unassigned Fob_ids needing removal
+create view v_unassigned_fob_ids_to_remove as 
 select sysem_fob_id, controller from 
 v_system_assigned_fob_compare vsafc 
 where assigned_fob_id is null;
@@ -48,7 +48,7 @@ where assigned_fob_id is null;
 select count(*), fob_id from access_control
 group by fob_id;
 
---Fibd the fob_ids present on only one Door controller
+--Support view: Find the fob_ids present on only one door controller
 create view v_error_fobid_on_single_controller as
 with controller_count as 
 (
@@ -70,10 +70,21 @@ where sc.sysem_fob_id = ac.fob_id
 order by sc.sysem_fob_id asc;
 
 
---- Associate the list of Fobs on a single controller with the controller they are present on
+/*--- Associate the list of Fobs on a single controller with the controller they are present on
 create view v_error_detail_fobid_single_controller_to_remove as
 select vedfsc.* from 
 v_error_detail_fobid_single_controller vedfsc 
 full outer join v_fob_ids_to_remove vfitr
 on vedfsc.sysem_fob_id = vfitr.sysem_fob_id
 where vfitr.sysem_fob_id is null;
+*/
+
+--Identify assigned fobs that are missing by controller
+
+
+
+/* Trend Queries */
+-- Identify number of fobs added / removed from each controller over that past 7 days
+
+
+--
