@@ -10,24 +10,25 @@ group by status;
 create view v_fobcount_comparison as
 with fob_List as
 (
-	select distinct fob_id, controller 
-	from access_control
+	select distinct fob_id, controller_id
+	from door_controller.fobs
 	order by fob_id
 )
-select count(fob_id), controller
+select count(fob_id), controller_id
 from fob_list
-group by controller;
+group by controller_id;
 
 -- Which of the fobs are in the official list compared to what is on the controllers
-create view v_system_assigned_fob_compare as
+drop view v_system_assigned_fob_compare cascade;
+create or replace view v_system_assigned_fob_compare as
 with system_fob_List as
 (
-	select distinct fob_id, controller 
-	from access_control
+	select distinct fob_id, controller_id 
+	from door_controller.fobs
 	order by fob_id
 )
-select k.fob_id as assigned_fob_id, fsl.fob_id as sysem_fob_id, controller from 
-keyfobs k 
+select k.fob_id as assigned_fob_id, fsl.fob_id as sysem_fob_id, controller_id from 
+key_fobs.keyfobs k 
 full outer join system_fob_list fsl
 on k.fob_id = fsl.fob_id
 order by k.fob_id;
@@ -39,20 +40,28 @@ where sysem_fob_id is null
 and assigned_fob_id > 0;
 
 --FOb_ids needing removal
-create view v_fob_ids_to_remove as 
-select sysem_fob_id, controller from 
-v_system_assigned_fob_compare vsafc 
-where assigned_fob_id is null;
+drop view v_fob_ids_to_remove cascade;
+create or replace view v_fob_ids_to_remove as
+with controllers as
+(
+	select distinct controller, controller_ip from door_controller.door
+)
+select distinct sysem_fob_id, controller_id, d.controller_ip from 
+v_system_assigned_fob_compare vsafc
+inner join controllers d
+on d.controller = vsafc.controller_id
+where assigned_fob_id is null
+order by controller_id asc;
 
 -- Check integrity of polled results
-select count(*), fob_id from access_control
+select count(*), fob_id from door_controller.fobs f 
 group by fob_id;
 
 --Fibd the fob_ids present on only one Door controller
-create view v_error_fobid_on_single_controller as
+create or replace view v_error_fobid_on_single_controller as
 with controller_count as 
 (
-	select count(controller) as controller_count, sysem_fob_id
+	select count(controller_id) as controller_count, sysem_fob_id
 	from v_system_assigned_fob_compare
 	group by sysem_fob_id
 )
@@ -63,10 +72,10 @@ where controller_count = 1;
 
 -- Determine the door controller the fob_ids in v_error_fobid_on_single_controller as associated with
 create view v_error_detail_fobid_single_controller as
-select distinct sysem_fob_id, controller
+select distinct sysem_fob_id, controller_id
 from v_error_fobid_on_single_controller sc 
-left join access_control ac
-where sc.sysem_fob_id = ac.fob_id
+left join door_controller.fobs ac
+on sc.sysem_fob_id = ac.fob_id
 order by sc.sysem_fob_id asc;
 
 
